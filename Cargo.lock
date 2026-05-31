@@ -115,22 +115,38 @@ dependencies = [
 ]
 
 [[package]]
-name = "cccc"
+name = "cccc-cli"
 version = "0.1.0"
 dependencies = [
  "assert_cmd",
+ "cccc-core",
+ "cccc-typescript",
  "clap",
  "ignore",
+ "predicates",
+ "rayon",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "cccc-core"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "cccc-typescript"
+version = "0.1.0"
+dependencies = [
+ "cccc-core",
  "oxc_allocator",
  "oxc_ast",
  "oxc_ast_visit",
  "oxc_parser",
  "oxc_span",
  "oxc_syntax",
- "predicates",
- "rayon",
- "serde",
- "serde_json",
 ]
 
 [[package]]

@@ -1,15 +1,14 @@
-mod analyzer;
 mod cli;
-mod report;
+mod output;
 mod walk;
+
+use std::path::Path;
 
 use clap::Parser;
 use rayon::prelude::*;
 
-use std::path::Path;
-
+use cccc_core::report::{self, FileReport, FunctionReport, Metric, Report};
 use cli::Cli;
-use report::{FileReport, FunctionReport, Metric, Report};
 
 /// Below this many files, sequential analysis beats paying for a rayon pool.
 const PARALLEL_THRESHOLD: usize = 16;
@@ -21,7 +20,7 @@ fn main() {
 /// Read and analyze one file, reporting (but not failing on) read errors.
 fn analyze(path: &Path) -> Option<FileReport> {
     match std::fs::read_to_string(path) {
-        Ok(src) => Some(analyzer::analyze_source(path, &src)),
+        Ok(src) => Some(cccc_typescript::analyze_source(path, &src)),
         Err(e) => {
             eprintln!("cccc: cannot read {}: {e}", path.display());
             None
@@ -89,9 +88,9 @@ fn run() -> i32 {
     if let Some((metric, n)) = top_request {
         let top = report::build_top_report(&reports, summary, metric, n);
         if cli.table {
-            report::print_top_table(&top);
+            output::print_top_table(&top);
         } else {
-            report::print_json(&top);
+            output::print_json(&top);
         }
         return i32::from(fail);
     }
@@ -108,9 +107,9 @@ fn run() -> i32 {
     };
 
     if cli.table {
-        report::print_table(&report);
+        output::print_table(&report);
     } else {
-        report::print_json(&report);
+        output::print_json(&report);
     }
 
     i32::from(fail)

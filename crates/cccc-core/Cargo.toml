@@ -1,0 +1,9 @@
+[package]
+name = "cccc-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Language-agnostic Cognitive (SonarSource) and Cyclomatic (McCabe) complexity engine over a normalized IR"
+
+[dependencies]
+serde = { workspace = true }

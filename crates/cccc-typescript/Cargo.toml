@@ -1,0 +1,18 @@
+[package]
+name = "cccc-typescript"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "TypeScript/JavaScript (oxc) adapter that lowers source into the cccc-core complexity IR"
+
+[dependencies]
+cccc-core = { workspace = true }
+oxc_allocator = "0.133"
+oxc_parser = "0.133"
+oxc_ast = "0.133"
+# default features pull in `serialize`, which switches the AST to a phantom
+# raw-transfer layout where struct fields are inaccessible. We only need the
+# Visit trait, so disable defaults.
+oxc_ast_visit = { version = "0.133", default-features = false }
+oxc_span = "0.133"
+oxc_syntax = "0.133"

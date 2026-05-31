@@ -1,10 +1,36 @@
-# cccc
+# cccc - A tool for measurement of Cognitive Complexity and Cyclomatic Complexity
 
-A fast CLI that measures **Cognitive Complexity** (SonarSource / G. Ann Campbell)
-and **Cyclomatic Complexity** (McCabe) of TypeScript and JavaScript code.
+- A fast CLI that measures **Cognitive Complexity** (SonarSource / G. Ann Campbell)
+  and **Cyclomatic Complexity** (McCabe) of TypeScript and JavaScript code.
+  - Written in Rust, using the [oxc](https://oxc.rs) parser. Supports `.ts`, `.tsx`,
+    `.js`, `.jsx`, `.mts`, `.cts`, `.mjs`, `.cjs`.
+- A Rust library for calculating cognitive and cyclomatic complexity in a language-agnostic way
 
-Written in Rust, using the [oxc](https://oxc.rs) parser. Supports `.ts`, `.tsx`,
-`.js`, `.jsx`, `.mts`, `.cts`, `.mjs`, `.cjs`.
+## Workspace layout
+
+The complexity engine is split from the language parser so it can be reused as a
+library and extended to other languages:
+
+| Crate | Role |
+|-------|------|
+| [`cccc-core`](crates/cccc-core) | Language-agnostic engine: a normalized IR (`ir::Node`), the scoring rules (`engine::analyze`), and the result/aggregation types. Depends only on `serde`. |
+| [`cccc-typescript`](crates/cccc-typescript) | TS/JS adapter: parses with oxc and lowers the AST into `cccc-core`'s IR. |
+| [`cccc-cli`](crates/cccc-cli) | The `cccc` binary: file walking, parallelism, output rendering. |
+
+To support another language, write an adapter that lowers its AST into
+`cccc_core::ir::Node` and call `cccc_core::engine::analyze` — no need to
+reimplement the metrics.
+
+```rust
+use cccc_core::{engine::analyze, ir::Node};
+
+let f = Node::Function {
+    name: "f".into(), kind: "function".into(), line: 1,
+    body: vec![Node::Branch { test: vec![], then: vec![], alternate: None }],
+};
+let report = analyze("example", &[f], vec![]);
+assert_eq!(report.functions[0].cognitive, 1);  // one `if`
+```
 
 ## Install / build
 
