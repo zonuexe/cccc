@@ -1,4 +1,4 @@
-# cccc - A tool for measurement of Cognitive Complexity and Cyclomatic Complexity
+# cccc - A tool/library for measurement of **C**ognitive **C**omplexity and **C**yclomatic **C**omplexity
 
 - A fast CLI that measures **Cognitive Complexity** (SonarSource / G. Ann Campbell)
   and **Cyclomatic Complexity** (McCabe) of TypeScript and JavaScript code.
