@@ -92,7 +92,10 @@ pub fn run(
     // For a handful of files, spinning up a rayon pool costs more than it saves,
     // so analyze sequentially. Above the threshold, fan out across `jobs` workers.
     let mut reports: Vec<FileReport> = if jobs <= 1 || files.len() <= PARALLEL_THRESHOLD {
-        files.iter().filter_map(|p| read_and_analyze(analyze, p)).collect()
+        files
+            .iter()
+            .filter_map(|p| read_and_analyze(analyze, p))
+            .collect()
     } else {
         let pool = match rayon::ThreadPoolBuilder::new().num_threads(jobs).build() {
             Ok(pool) => pool,

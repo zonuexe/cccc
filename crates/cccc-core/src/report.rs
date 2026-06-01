@@ -139,7 +139,12 @@ pub fn compute_top(reports: &[FileReport], metric: Metric, n: usize) -> Vec<TopE
 }
 
 /// Assemble a `TopReport` from the per-file reports and a precomputed summary.
-pub fn build_top_report(reports: &[FileReport], summary: Summary, metric: Metric, n: usize) -> TopReport {
+pub fn build_top_report(
+    reports: &[FileReport],
+    summary: Summary,
+    metric: Metric,
+    n: usize,
+) -> TopReport {
     TopReport {
         metric: metric.as_str().to_string(),
         top: compute_top(reports, metric, n),

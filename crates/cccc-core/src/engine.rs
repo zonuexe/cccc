@@ -58,7 +58,9 @@ impl Engine {
             nesting: 0,
             children: Vec::new(),
         };
-        Self { stack: vec![module] }
+        Self {
+            stack: vec![module],
+        }
     }
 
     fn top(&mut self) -> &mut Frame {
@@ -109,9 +111,22 @@ impl Engine {
 
     fn visit(&mut self, node: &Node) {
         match node {
-            Node::Function { name, kind, line, body } => self.visit_function(name, kind, *line, body),
-            Node::Branch { test, then, alternate } => self.visit_branch(test, then, alternate),
-            Node::Conditional { test, then, alternate } => {
+            Node::Function {
+                name,
+                kind,
+                line,
+                body,
+            } => self.visit_function(name, kind, *line, body),
+            Node::Branch {
+                test,
+                then,
+                alternate,
+            } => self.visit_branch(test, then, alternate),
+            Node::Conditional {
+                test,
+                then,
+                alternate,
+            } => {
                 let n = self.top_nesting();
                 self.add_cognitive(1 + n);
                 self.add_cyclomatic();
@@ -186,7 +201,11 @@ impl Engine {
         let Some(node) = alternate else { return };
         match node.as_ref() {
             // `else if`: its own decision (cyclomatic +1), flat cognitive +1.
-            Node::Branch { test, then, alternate } => {
+            Node::Branch {
+                test,
+                then,
+                alternate,
+            } => {
                 self.add_cognitive(1);
                 self.add_cyclomatic();
                 self.walk(test);
@@ -263,7 +282,12 @@ mod tests {
     use crate::ir::{LogicalOp, Node, SwitchCase};
 
     fn func(name: &str, kind: &str, body: Vec<Node>) -> Node {
-        Node::Function { name: name.into(), kind: kind.into(), line: 1, body }
+        Node::Function {
+            name: name.into(),
+            kind: kind.into(),
+            line: 1,
+            body,
+        }
     }
     fn find<'a>(fns: &'a [FunctionReport], name: &str) -> Option<&'a FunctionReport> {
         for f in fns {
@@ -291,8 +315,12 @@ mod tests {
             then: vec![Node::Jump { labeled: true }],
             alternate: None,
         };
-        let inner_for = Node::Loop { body: vec![inner_if] };
-        let outer_for = Node::Loop { body: vec![inner_for] };
+        let inner_for = Node::Loop {
+            body: vec![inner_if],
+        };
+        let outer_for = Node::Loop {
+            body: vec![inner_for],
+        };
         let f = func("sumOfPrimes", "function", vec![outer_for]);
         let r = analyze("t", &[f], vec![]);
         // for(+1) + nested for(+2) + nested if(+3) + continue OUT(+1) = 7
@@ -303,9 +331,18 @@ mod tests {
     fn sonar_get_words_is_1() {
         let sw = Node::Switch {
             cases: vec![
-                SwitchCase { is_default: false, body: vec![] },
-                SwitchCase { is_default: false, body: vec![] },
-                SwitchCase { is_default: true, body: vec![] },
+                SwitchCase {
+                    is_default: false,
+                    body: vec![],
+                },
+                SwitchCase {
+                    is_default: false,
+                    body: vec![],
+                },
+                SwitchCase {
+                    is_default: true,
+                    body: vec![],
+                },
             ],
         };
         let r = analyze("t", &[func("getWords", "function", vec![sw])], vec![]);
@@ -320,7 +357,11 @@ mod tests {
             test: vec![],
             then: vec![Node::Branch {
                 test: vec![],
-                then: vec![Node::Branch { test: vec![], then: vec![], alternate: None }],
+                then: vec![Node::Branch {
+                    test: vec![],
+                    then: vec![],
+                    alternate: None,
+                }],
                 alternate: None,
             }],
             alternate: None,
@@ -350,13 +391,21 @@ mod tests {
         // if (a && b && c || d): if(+1) + && seq(+1) + || seq(+1) = 3
         let inner_and = Node::Logical {
             op: LogicalOp::And,
-            operands: vec![Node::Group(vec![]), Node::Group(vec![]), Node::Group(vec![])],
+            operands: vec![
+                Node::Group(vec![]),
+                Node::Group(vec![]),
+                Node::Group(vec![]),
+            ],
         };
         let outer_or = Node::Logical {
             op: LogicalOp::Or,
             operands: vec![inner_and, Node::Group(vec![])],
         };
-        let branch = Node::Branch { test: vec![outer_or], then: vec![], alternate: None };
+        let branch = Node::Branch {
+            test: vec![outer_or],
+            then: vec![],
+            alternate: None,
+        };
         let r = analyze("t", &[func("f", "function", vec![branch])], vec![]);
         assert_eq!(cog(&r, "f"), 3);
         // cyc: base1 + if1 + (&& has 3 operands => +2) + (|| has 2 => +1) = 5
@@ -367,8 +416,14 @@ mod tests {
     fn recursion_adds_one() {
         // fib: if(+1) + call fib (+1 recursion)
         let body = vec![
-            Node::Branch { test: vec![], then: vec![], alternate: None },
-            Node::Call { callee: Some("fib".into()) },
+            Node::Branch {
+                test: vec![],
+                then: vec![],
+                alternate: None,
+            },
+            Node::Call {
+                callee: Some("fib".into()),
+            },
         ];
         let r = analyze("t", &[func("fib", "function", body)], vec![]);
         assert_eq!(cog(&r, "fib"), 2);
@@ -376,11 +431,15 @@ mod tests {
 
     #[test]
     fn nested_function_is_independent_unit() {
-        let inner = func("inner", "function", vec![Node::Branch {
-            test: vec![],
-            then: vec![],
-            alternate: None,
-        }]);
+        let inner = func(
+            "inner",
+            "function",
+            vec![Node::Branch {
+                test: vec![],
+                then: vec![],
+                alternate: None,
+            }],
+        );
         let outer = func("outer", "function", vec![inner]);
         let r = analyze("t", &[outer], vec![]);
         assert_eq!(cog(&r, "outer"), 0); // child excluded from parent's own score
@@ -389,8 +448,24 @@ mod tests {
 
     #[test]
     fn file_total_sums_all_functions() {
-        let a = func("a", "function", vec![Node::Branch { test: vec![], then: vec![], alternate: None }]);
-        let b = func("b", "function", vec![Node::Branch { test: vec![], then: vec![], alternate: None }]);
+        let a = func(
+            "a",
+            "function",
+            vec![Node::Branch {
+                test: vec![],
+                then: vec![],
+                alternate: None,
+            }],
+        );
+        let b = func(
+            "b",
+            "function",
+            vec![Node::Branch {
+                test: vec![],
+                then: vec![],
+                alternate: None,
+            }],
+        );
         let r = analyze("t", &[a, b], vec![]);
         assert_eq!(r.cognitive, 2);
     }

@@ -91,8 +91,16 @@ where
 }
 
 fn write_summary(out: &mut dyn Write, s: &Summary) -> std::io::Result<()> {
-    writeln!(out, "summary ({} files, {} functions)", s.file_count, s.function_count)?;
-    writeln!(out, "  {:<11} {:>5} {:>5} {:>7} {:>5} {:>5}", "", "sum", "max", "median", "p90", "p95")?;
+    writeln!(
+        out,
+        "summary ({} files, {} functions)",
+        s.file_count, s.function_count
+    )?;
+    writeln!(
+        out,
+        "  {:<11} {:>5} {:>5} {:>7} {:>5} {:>5}",
+        "", "sum", "max", "median", "p90", "p95"
+    )?;
     write_metric_row(out, "cognitive", &s.cognitive)?;
     write_metric_row(out, "cyclomatic", &s.cyclomatic)
 }

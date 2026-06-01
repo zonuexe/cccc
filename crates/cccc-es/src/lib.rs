@@ -121,8 +121,15 @@ impl Builder {
     fn lower_if<'a>(&mut self, it: &IfStatement<'a>) -> Node {
         let test = self.collect(|s| s.visit_expression(&it.test));
         let then = self.collect(|s| s.visit_statement(&it.consequent));
-        let alternate = it.alternate.as_ref().map(|alt| Box::new(self.lower_alternate(alt)));
-        Node::Branch { test, then, alternate }
+        let alternate = it
+            .alternate
+            .as_ref()
+            .map(|alt| Box::new(self.lower_alternate(alt)));
+        Node::Branch {
+            test,
+            then,
+            alternate,
+        }
     }
 
     /// `else if` → nested `Branch`; plain `else` → `Group`.
@@ -158,7 +165,10 @@ impl Builder {
             Expression::LogicalExpression(inner) => {
                 let mut sub = Vec::new();
                 self.collect_logical_operands(inner, inner.operator, &mut sub);
-                operands.push(Node::Logical { op: map_logical_op(inner.operator), operands: sub });
+                operands.push(Node::Logical {
+                    op: map_logical_op(inner.operator),
+                    operands: sub,
+                });
             }
             Expression::ParenthesizedExpression(p) => {
                 self.collect_logical_side(&p.expression, op, operands);
@@ -182,7 +192,12 @@ impl<'a> Visit<'a> for Builder {
         let line = self.line(it.span.start);
         self.pending_name = None;
         let body = self.collect(|s| walk::walk_function(s, it, flags));
-        self.emit(Node::Function { name, kind, line, body });
+        self.emit(Node::Function {
+            name,
+            kind,
+            line,
+            body,
+        });
     }
 
     fn visit_arrow_function_expression(&mut self, it: &ArrowFunctionExpression<'a>) {
@@ -193,7 +208,12 @@ impl<'a> Visit<'a> for Builder {
         let kind = self.pending_kind.take().unwrap_or("arrow").to_string();
         let line = self.line(it.span.start);
         let body = self.collect(|s| walk::walk_arrow_function_expression(s, it));
-        self.emit(Node::Function { name, kind, line, body });
+        self.emit(Node::Function {
+            name,
+            kind,
+            line,
+            body,
+        });
     }
 
     fn visit_variable_declarator(&mut self, it: &VariableDeclarator<'a>) {
@@ -244,7 +264,11 @@ impl<'a> Visit<'a> for Builder {
         let test = self.collect(|s| s.visit_expression(&it.test));
         let then = self.collect(|s| s.visit_expression(&it.consequent));
         let alternate = self.collect(|s| s.visit_expression(&it.alternate));
-        self.emit(Node::Conditional { test, then, alternate });
+        self.emit(Node::Conditional {
+            test,
+            then,
+            alternate,
+        });
     }
 
     fn visit_for_statement(&mut self, it: &ForStatement<'a>) {
@@ -289,7 +313,10 @@ impl<'a> Visit<'a> for Builder {
                     s.visit_statement(stmt);
                 }
             });
-            cases.push(SwitchCase { is_default: case.test.is_none(), body });
+            cases.push(SwitchCase {
+                is_default: case.test.is_none(),
+                body,
+            });
         }
         self.emit(Node::Switch { cases });
     }
@@ -300,21 +327,30 @@ impl<'a> Visit<'a> for Builder {
     }
 
     fn visit_break_statement(&mut self, it: &BreakStatement<'a>) {
-        self.emit(Node::Jump { labeled: it.label.is_some() });
+        self.emit(Node::Jump {
+            labeled: it.label.is_some(),
+        });
     }
 
     fn visit_continue_statement(&mut self, it: &ContinueStatement<'a>) {
-        self.emit(Node::Jump { labeled: it.label.is_some() });
+        self.emit(Node::Jump {
+            labeled: it.label.is_some(),
+        });
     }
 
     fn visit_logical_expression(&mut self, it: &LogicalExpression<'a>) {
         let mut operands = Vec::new();
         self.collect_logical_operands(it, it.operator, &mut operands);
-        self.emit(Node::Logical { op: map_logical_op(it.operator), operands });
+        self.emit(Node::Logical {
+            op: map_logical_op(it.operator),
+            operands,
+        });
     }
 
     fn visit_call_expression(&mut self, it: &CallExpression<'a>) {
-        self.emit(Node::Call { callee: callee_name(&it.callee) });
+        self.emit(Node::Call {
+            callee: callee_name(&it.callee),
+        });
         walk::walk_call_expression(self, it);
     }
 }
