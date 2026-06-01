@@ -6,11 +6,13 @@ resolver = "2"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
+repository = "https://github.com/moznion/cccc"
+homepage = "https://github.com/moznion/cccc"
 
 [workspace.dependencies]
-cccc-core = { path = "crates/cccc-core" }
-cccc-cli = { path = "crates/cccc-cli" }
-cccc-es = { path = "crates/cccc-es" }
+cccc-core = { path = "crates/cccc-core", version = "0.1.0" }
+cccc-cli = { path = "crates/cccc-cli", version = "0.1.0" }
+cccc-es = { path = "crates/cccc-es", version = "0.1.0" }
 serde = { version = "1", features = ["derive"] }
 
 [profile.release]

@@ -3,6 +3,8 @@ name = "cccc-es"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 description = "ECMAScript/TypeScript (oxc) adapter that lowers source into the cccc-core complexity IR"
 
 [dependencies]

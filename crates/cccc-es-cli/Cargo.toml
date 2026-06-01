@@ -3,6 +3,8 @@ name = "cccc-es-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 description = "The cccc-es binary: ECMAScript/TypeScript complexity CLI (cccc-es adapter + shared cccc-cli machinery)"
 
 [[bin]]
