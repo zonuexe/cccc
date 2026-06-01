@@ -28,6 +28,10 @@ binary crate whose `main` calls
 `cccc_cli::run(env!("CARGO_BIN_NAME"), env!("CARGO_PKG_VERSION"), analyze_source, DEFAULT_EXTS)`
 — no need to reimplement either the metrics or the CLI.
 
+**See [docs/ADDING_A_LANGUAGE.md](docs/ADDING_A_LANGUAGE.md) for the full
+step-by-step guide**, including the IR-node reference table, the
+logical-operator folding rule, and how to test the adapter.
+
 ```rust
 use cccc_core::{engine::analyze, ir::Node};
 
