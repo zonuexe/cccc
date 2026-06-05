@@ -37,7 +37,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: taiki-e/upload-rust-binary-action@f0d45ae91ee7b8ee928de7a9d04d893a08bcbec6 # v1.30.2
+      - uses: taiki-e/upload-rust-binary-action@dd5bbe0528f32a483b749797277ab6ef83a29999
         with:
           # The binary produced by the cccc-es-cli crate.
           bin: cccc-es
