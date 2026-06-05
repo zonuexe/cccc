@@ -102,6 +102,18 @@ Files are analyzed in parallel. The worker count defaults to the number of
 logical CPUs and can be capped with `-j/--jobs`; the output is identical
 regardless of the worker count.
 
+## GitHub Action
+
+A composite action to install and run cccc-es in CI lives in its own repository:
+[moznion/cccc-es-action](https://github.com/moznion/cccc-es-action).
+
+```yaml
+- uses: moznion/cccc-es-action@v1
+  with:
+    path: src/
+    max-cognitive: 15
+```
+
 ## Output shape (JSON)
 
 An object with `files` (per-file reports) and `summary` (a whole-project
