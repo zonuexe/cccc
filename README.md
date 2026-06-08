@@ -1,9 +1,11 @@
 # cccc - A tool/library for measurement of **C**ognitive **C**omplexity and **C**yclomatic **C**omplexity
 
 - A fast CLI that measures **Cognitive Complexity** (SonarSource / G. Ann Campbell)
-  and **Cyclomatic Complexity** (McCabe) of TypeScript and JavaScript code.
-  - Written in Rust, using the [oxc](https://oxc.rs) parser. Supports `.ts`, `.tsx`,
-    `.js`, `.jsx`, `.mts`, `.cts`, `.mjs`, `.cjs`.
+  and **Cyclomatic Complexity** (McCabe). Written in Rust; two language front-ends
+  ship today, both sharing the same engine, CLI, flags, and output format:
+  - **`cccc-es`** — TypeScript / JavaScript, via the [oxc](https://oxc.rs) parser.
+    Supports `.ts`, `.tsx`, `.js`, `.jsx`, `.mts`, `.cts`, `.mjs`, `.cjs`.
+  - **`cccc-rs`** — Rust, via the [syn](https://docs.rs/syn) parser. Supports `.rs`.
 - A Rust library for calculating cognitive and cyclomatic complexity in a language-agnostic way
 
 ## Workspace layout
@@ -17,6 +19,8 @@ library and extended to other languages:
 | [`cccc-cli`](crates/cccc-cli) | Shared CLI machinery (argument parsing, file walking, parallelism, output rendering) as a library. A front-end calls `cccc_cli::run(bin_name, version, analyze_fn, default_exts)`. |
 | [`cccc-es`](crates/cccc-es) | ECMAScript/TypeScript adapter **library**: lowers the oxc AST into `cccc-core`'s IR. Depends only on `cccc-core` + oxc — **no CLI dependencies**, so embedding it stays lightweight. |
 | [`cccc-es-cli`](crates/cccc-es-cli) | The **`cccc-es`** binary: a thin shell that wires the `cccc-es` adapter into the shared `cccc-cli` runner. |
+| [`cccc-rs`](crates/cccc-rs) | Rust adapter **library**: lowers the [syn](https://docs.rs/syn) AST into `cccc-core`'s IR. Depends only on `cccc-core` + syn — **no CLI dependencies**. |
+| [`cccc-rs-cli`](crates/cccc-rs-cli) | The **`cccc-rs`** binary: a thin shell that wires the `cccc-rs` adapter into the shared `cccc-cli` runner. |
 
 The adapter and the binary are separate crates so that a library consumer who
 only wants the metrics pulls in just `cccc-es` (+ `cccc-core` + oxc), never clap
@@ -26,7 +30,8 @@ To support another language: (1) add an adapter crate that lowers its AST into
 `cccc_core::ir::Node` and calls `cccc_core::engine::analyze`, then (2) add a tiny
 binary crate whose `main` calls
 `cccc_cli::run(env!("CARGO_BIN_NAME"), env!("CARGO_PKG_VERSION"), analyze_source, DEFAULT_EXTS)`
-— no need to reimplement either the metrics or the CLI.
+— no need to reimplement either the metrics or the CLI. `cccc-es` (oxc) and
+`cccc-rs` (syn) are the two reference adapters: same shape, different parser.
 
 **See [docs/ADDING_A_LANGUAGE.md](docs/ADDING_A_LANGUAGE.md) for the full
 step-by-step guide**, including the IR-node reference table, the
@@ -47,14 +52,18 @@ assert_eq!(report.functions[0].cognitive, 1);  // one `if`
 
 ```sh
 cargo build --release
-# binary at ./target/release/cccc-es
+# binaries at ./target/release/cccc-es and ./target/release/cccc-rs
 ```
 
 ## Usage
 
 ```sh
-cccc-es <paths...> [options]
+cccc-es <paths...> [options]   # TypeScript / JavaScript
+cccc-rs <paths...> [options]   # Rust
 ```
+
+Both front-ends take the **same flags and produce the same output format** — the
+examples below use `cccc-es`, but `cccc-rs` behaves identically on `.rs` files.
 
 Output is **JSON by default**. Pass one or more files or directories;
 directories are walked recursively (respecting `.gitignore`, always skipping
@@ -196,3 +205,11 @@ ternary, `for`/`for-in`/`for-of`/`while`/`do-while`, `case` (excluding
 Each function-like unit is scored independently (nesting resets to 0 at the
 function boundary); nested functions are reported as children rather than
 inflating the parent's own score.
+
+The rules above are stated in TypeScript/JavaScript terms; each adapter maps its
+language onto the same IR. For **Rust** (`cccc-rs`): `fn` / `impl` methods /
+trait default methods / closures are the function-like units; `if`/`else if`/
+`else`, `match` (a `_` or bare-binding arm is the non-decision `default`),
+`for`/`while`/`loop`, labelled `break`/`continue`, and `&&`/`||` map to the
+corresponding nodes. Rust has no ternary (`if` is an expression) and no
+`try`/`catch` (errors flow through `?`), so those simply don't occur.
