@@ -153,6 +153,39 @@ fn top_flags_are_mutually_exclusive() {
 }
 
 #[test]
+fn exclude_glob_drops_matching_files() {
+    // `--exclude` lives in the shared cccc-cli crate; this smoke test confirms
+    // the cccc-go front-end wires it through. Excluding `*_test.go` by file name
+    // must leave only the non-test file.
+    let dir = std::env::temp_dir().join("cccc_go_exclude_test");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(
+        dir.join("src/app.go"),
+        "package main\nfunc a() int { return 1 }",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("src/app_test.go"),
+        "package main\nfunc b() int { return 2 }",
+    )
+    .unwrap();
+
+    let out = Command::cargo_bin("cccc-go")
+        .unwrap()
+        .args(["--exclude", "*_test.go"])
+        .arg(&dir)
+        .assert()
+        .success();
+    let stdout = String::from_utf8(out.get_output().stdout.clone()).unwrap();
+    let v: serde_json::Value = serde_json::from_str(&stdout).expect("valid JSON");
+    let files = v["files"].as_array().unwrap();
+    assert_eq!(files.len(), 1, "the *_test.go file must be excluded");
+    assert!(files[0]["path"].as_str().unwrap().ends_with("app.go"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn max_cognitive_threshold_fails() {
     // sumOfPrimes has cognitive 7, so a max of 5 must fail (exit 1).
     Command::cargo_bin("cccc-go")

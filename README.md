@@ -81,6 +81,7 @@ directories are walked recursively (respecting `.gitignore`, always skipping
 |------|-------------|
 | `--table` | Human-readable table instead of JSON |
 | `--ext ts,tsx,...` | Override the set of analyzed extensions |
+| `--exclude GLOB` | Exclude files matching a glob (repeatable) |
 | `--max-cognitive N` | Exit non-zero if any function's cognitive complexity exceeds N |
 | `--max-cyclomatic N` | Exit non-zero if any function's cyclomatic complexity exceeds N |
 | `--min N` | Only report functions with complexity >= N |
@@ -93,6 +94,15 @@ directories are walked recursively (respecting `.gitignore`, always skipping
 output is a ranking (`{ "metric", "top": [...], "summary" }`) instead of the
 per-file `files` array; each entry carries its own `path` and `line`. The
 `summary` still reflects the full population.
+
+`--exclude` takes a glob pattern and may be given multiple times. Each pattern is
+matched both against a file's path relative to the directory you passed (so
+`dist/**` is anchored at that root) and against its file name alone (so
+`*.test.ts` matches at any depth without a `**/` prefix). `*` does not cross `/`;
+use `**` to span directories. Brace alternation is supported, e.g.
+`**/*.{test,spec}.ts`. Excluded files are dropped whether found by walking a
+directory or named explicitly on the command line. An invalid pattern is an error
+(exit code 2). This is independent of `--no-ignore` and `.gitignore` handling.
 
 ### Examples
 
@@ -108,6 +118,9 @@ cccc-es --max-cognitive 15 src/
 
 # The 10 most cognitively-complex functions across the project
 cccc-es --top-cognitive 10 src/
+
+# Skip build output and test files
+cccc-es --exclude 'dist/**' --exclude '**/*.{test,spec}.ts' src/
 
 # Limit parallelism to 4 workers (default is the logical CPU count)
 cccc-es -j 4 src/

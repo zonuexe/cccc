@@ -75,7 +75,17 @@ pub fn run(
         None => default_exts.iter().map(|s| s.to_string()).collect(),
     };
 
-    let files = walk::collect_files(&cli.paths, &exts, cli.no_ignore);
+    // Compile the exclude globs up front so a bad pattern fails loudly (exit 2)
+    // rather than silently skipping nothing.
+    let exclude = match walk::build_exclude_set(&cli.exclude) {
+        Ok(set) => set,
+        Err(e) => {
+            eprintln!("cccc: invalid --exclude pattern: {e}");
+            return 2;
+        }
+    };
+
+    let files = walk::collect_files(&cli.paths, &exts, cli.no_ignore, exclude.as_ref());
     if files.is_empty() {
         eprintln!("cccc: no matching files found");
         return 0;
