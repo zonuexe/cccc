@@ -122,7 +122,7 @@ dependencies = [
 
 [[package]]
 name = "cccc-cli"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "cccc-core",
  "clap",
@@ -135,14 +135,14 @@ dependencies = [
 
 [[package]]
 name = "cccc-core"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "cccc-es"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "cccc-core",
  "oxc_allocator",
@@ -155,7 +155,7 @@ dependencies = [
 
 [[package]]
 name = "cccc-es-cli"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "assert_cmd",
  "cccc-cli",
@@ -166,7 +166,7 @@ dependencies = [
 
 [[package]]
 name = "cccc-go"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "cccc-core",
  "gosyn",
@@ -174,7 +174,7 @@ dependencies = [
 
 [[package]]
 name = "cccc-go-cli"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "assert_cmd",
  "cccc-cli",
@@ -185,7 +185,7 @@ dependencies = [
 
 [[package]]
 name = "cccc-rs"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "cccc-core",
  "proc-macro2",
@@ -194,7 +194,7 @@ dependencies = [
 
 [[package]]
 name = "cccc-rs-cli"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "assert_cmd",
  "cccc-cli",
