@@ -153,6 +153,31 @@ fn top_flags_are_mutually_exclusive() {
 }
 
 #[test]
+fn exclude_glob_drops_matching_files() {
+    // `--exclude` lives in the shared cccc-cli crate; this smoke test confirms
+    // the cccc-rs front-end wires it through. Excluding `*.test.rs` by file name
+    // must leave only the non-test file.
+    let dir = std::env::temp_dir().join("cccc_rs_exclude_test");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(dir.join("src/app.rs"), "fn a() -> i32 { 1 }").unwrap();
+    std::fs::write(dir.join("src/app.test.rs"), "fn b() -> i32 { 2 }").unwrap();
+
+    let out = Command::cargo_bin("cccc-rs")
+        .unwrap()
+        .args(["--exclude", "*.test.rs"])
+        .arg(&dir)
+        .assert()
+        .success();
+    let stdout = String::from_utf8(out.get_output().stdout.clone()).unwrap();
+    let v: serde_json::Value = serde_json::from_str(&stdout).expect("valid JSON");
+    let files = v["files"].as_array().unwrap();
+    assert_eq!(files.len(), 1, "the *.test.rs file must be excluded");
+    assert!(files[0]["path"].as_str().unwrap().ends_with("app.rs"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn max_cognitive_threshold_fails() {
     // sum_of_primes has cognitive 7, so a max of 5 must fail (exit 1).
     Command::cargo_bin("cccc-rs")

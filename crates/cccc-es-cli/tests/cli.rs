@@ -153,6 +153,99 @@ fn top_flags_are_mutually_exclusive() {
 }
 
 #[test]
+fn exclude_glob_drops_matching_files() {
+    // Two analyzable files in a temp dir; excluding `*.test.ts` by file name
+    // must leave only the non-test one.
+    let dir = std::env::temp_dir().join("cccc_es_exclude_test");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(dir.join("src/app.ts"), "function a() { return 1; }").unwrap();
+    std::fs::write(dir.join("src/app.test.ts"), "function b() { return 2; }").unwrap();
+
+    let out = Command::cargo_bin("cccc-es")
+        .unwrap()
+        .args(["--exclude", "*.test.ts"])
+        .arg(&dir)
+        .assert()
+        .success();
+    let stdout = String::from_utf8(out.get_output().stdout.clone()).unwrap();
+    let v: serde_json::Value = serde_json::from_str(&stdout).expect("valid JSON");
+    let files = v["files"].as_array().unwrap();
+    assert_eq!(files.len(), 1, "the *.test.ts file must be excluded");
+    assert!(
+        files[0]["path"].as_str().unwrap().ends_with("app.ts"),
+        "only app.ts should remain"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn exclude_glob_prunes_a_directory_subtree() {
+    let dir = std::env::temp_dir().join("cccc_es_exclude_dir_test");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("dist/nested")).unwrap();
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(dir.join("src/app.ts"), "function a() { return 1; }").unwrap();
+    std::fs::write(dir.join("dist/bundle.ts"), "function b() { return 2; }").unwrap();
+    std::fs::write(dir.join("dist/nested/x.ts"), "function c() { return 3; }").unwrap();
+
+    let out = Command::cargo_bin("cccc-es")
+        .unwrap()
+        .args(["--exclude", "dist/**"])
+        .arg(&dir)
+        .assert()
+        .success();
+    let stdout = String::from_utf8(out.get_output().stdout.clone()).unwrap();
+    let v: serde_json::Value = serde_json::from_str(&stdout).expect("valid JSON");
+    let files = v["files"].as_array().unwrap();
+    assert_eq!(files.len(), 1, "everything under dist/ must be excluded");
+    assert!(files[0]["path"].as_str().unwrap().ends_with("app.ts"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn exclude_can_be_repeated() {
+    let dir = std::env::temp_dir().join("cccc_es_exclude_multi_test");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("a.ts"), "function a() { return 1; }").unwrap();
+    std::fs::write(dir.join("a.test.ts"), "function b() { return 2; }").unwrap();
+    std::fs::write(dir.join("a.spec.ts"), "function c() { return 3; }").unwrap();
+
+    let out = Command::cargo_bin("cccc-es")
+        .unwrap()
+        .args(["--exclude", "*.test.ts", "--exclude", "*.spec.ts"])
+        .arg(&dir)
+        .assert()
+        .success();
+    let stdout = String::from_utf8(out.get_output().stdout.clone()).unwrap();
+    let v: serde_json::Value = serde_json::from_str(&stdout).expect("valid JSON");
+    assert_eq!(v["files"].as_array().unwrap().len(), 1);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn exclude_applies_to_explicit_file_argument() {
+    // Even a file named explicitly on the command line is dropped if it matches.
+    Command::cargo_bin("cccc-es")
+        .unwrap()
+        .args(["--exclude", "*.ts", "tests/fixtures/sample.ts"])
+        .assert()
+        .success()
+        .stderr(predicates::str::contains("no matching files"));
+}
+
+#[test]
+fn invalid_exclude_pattern_is_an_error() {
+    Command::cargo_bin("cccc-es")
+        .unwrap()
+        .args(["--exclude", "a[b", "tests/fixtures/sample.ts"])
+        .assert()
+        .failure()
+        .code(2);
+}
+
+#[test]
 fn max_cognitive_threshold_fails() {
     // sumOfPrimes has cognitive 7, so a max of 5 must fail (exit 1).
     Command::cargo_bin("cccc-es")

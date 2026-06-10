@@ -24,6 +24,14 @@ pub struct Cli {
     #[arg(long, value_delimiter = ',')]
     pub ext: Option<Vec<String>>,
 
+    /// Glob pattern of files to exclude from analysis. May be given multiple
+    /// times. Each pattern is matched against a file's path (e.g. `dist/**`)
+    /// and against its file name alone (e.g. `*.test.ts`, which then matches at
+    /// any depth). Brace alternation is supported: `**/*.{test,spec}.ts`.
+    /// `*` does not cross `/`; use `**` to span directories.
+    #[arg(long, value_name = "GLOB")]
+    pub exclude: Vec<String>,
+
     /// Exit non-zero if any function's cognitive complexity exceeds this value.
     #[arg(long, value_name = "N")]
     pub max_cognitive: Option<u32>,
