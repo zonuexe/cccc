@@ -61,7 +61,7 @@ pub fn to_ir(path: &Path, source: &str) -> (Vec<Node>, Vec<String>) {
     let mut builder = Builder::new(source);
     builder.visit_program(&ret.program);
     let nodes = builder.finish();
-    let parse_errors = ret.errors.iter().map(|e| e.to_string()).collect();
+    let parse_errors = ret.diagnostics.iter().map(|e| e.to_string()).collect();
     (nodes, parse_errors)
 }
 
