@@ -1,12 +1,14 @@
 # cccc - A tool/library for measurement of **C**ognitive **C**omplexity and **C**yclomatic **C**omplexity
 
 - A fast CLI that measures **Cognitive Complexity** (SonarSource / G. Ann Campbell)
-  and **Cyclomatic Complexity** (McCabe). Written in Rust; three language front-ends
+  and **Cyclomatic Complexity** (McCabe). Written in Rust; four language front-ends
   ship today, all sharing the same engine, CLI, flags, and output format:
   - **`cccc-es`** — TypeScript / JavaScript, via the [oxc](https://oxc.rs) parser.
     Supports `.ts`, `.tsx`, `.js`, `.jsx`, `.mts`, `.cts`, `.mjs`, `.cjs`.
   - **`cccc-rs`** — Rust, via the [syn](https://docs.rs/syn) parser. Supports `.rs`.
   - **`cccc-go`** — Go, via the [gosyn](https://docs.rs/gosyn) parser. Supports `.go`.
+  - **`cccc-php`** — PHP, via the [php-rs-parser](https://docs.rs/php-rs-parser)
+    parser. Supports `.php`.
 - A Rust library for calculating cognitive and cyclomatic complexity in a language-agnostic way
 
 ## Workspace layout
@@ -24,6 +26,8 @@ library and extended to other languages:
 | [`cccc-rs-cli`](crates/cccc-rs-cli) | The **`cccc-rs`** binary: a thin shell that wires the `cccc-rs` adapter into the shared `cccc-cli` runner. |
 | [`cccc-go`](crates/cccc-go) | Go adapter **library**: lowers the [gosyn](https://docs.rs/gosyn) AST into `cccc-core`'s IR. Depends only on `cccc-core` + gosyn — **no CLI dependencies**. |
 | [`cccc-go-cli`](crates/cccc-go-cli) | The **`cccc-go`** binary: a thin shell that wires the `cccc-go` adapter into the shared `cccc-cli` runner. |
+| [`cccc-php`](crates/cccc-php) | PHP adapter **library**: lowers the [php-rs-parser](https://docs.rs/php-rs-parser) AST into `cccc-core`'s IR. Depends only on `cccc-core` + php-rs-parser / php-ast — **no CLI dependencies**. |
+| [`cccc-php-cli`](crates/cccc-php-cli) | The **`cccc-php`** binary: a thin shell that wires the `cccc-php` adapter into the shared `cccc-cli` runner. |
 
 The adapter and the binary are separate crates so that a library consumer who
 only wants the metrics pulls in just `cccc-es` (+ `cccc-core` + oxc), never clap
@@ -34,8 +38,8 @@ To support another language: (1) add an adapter crate that lowers its AST into
 binary crate whose `main` calls
 `cccc_cli::run(env!("CARGO_BIN_NAME"), env!("CARGO_PKG_VERSION"), analyze_source, DEFAULT_EXTS)`
 — no need to reimplement either the metrics or the CLI. `cccc-es` (oxc),
-`cccc-rs` (syn), and `cccc-go` (gosyn) are the reference adapters: same shape,
-different parser.
+`cccc-rs` (syn), `cccc-go` (gosyn), and `cccc-php` (php-rs-parser) are the
+reference adapters: same shape, different parser.
 
 **See [docs/ADDING_A_LANGUAGE.md](docs/ADDING_A_LANGUAGE.md) for the full
 step-by-step guide**, including the IR-node reference table, the
@@ -56,7 +60,7 @@ assert_eq!(report.functions[0].cognitive, 1);  // one `if`
 
 ```sh
 cargo build --release
-# binaries at ./target/release/cccc-es, ./target/release/cccc-rs, and ./target/release/cccc-go
+# binaries at ./target/release/cccc-es, ./target/release/cccc-rs, ./target/release/cccc-go, and ./target/release/cccc-php
 ```
 
 ## Usage
@@ -65,11 +69,12 @@ cargo build --release
 cccc-es <paths...> [options]   # TypeScript / JavaScript
 cccc-rs <paths...> [options]   # Rust
 cccc-go <paths...> [options]   # Go
+cccc-php <paths...> [options]  # PHP
 ```
 
 All front-ends take the **same flags and produce the same output format** — the
-examples below use `cccc-es`, but `cccc-rs` and `cccc-go` behave identically on
-`.rs` and `.go` files respectively.
+examples below use `cccc-es`, but `cccc-rs`, `cccc-go`, and `cccc-php` behave
+identically on `.rs`, `.go`, and `.php` files respectively.
 
 Output is **JSON by default**. Pass one or more files or directories;
 directories are walked recursively (respecting `.gitignore`, always skipping
@@ -239,3 +244,11 @@ For **Go** (`cccc-go`): top-level functions / methods / function literals
 non-decision arm), labelled `break`/`continue`/`goto`, and `&&`/`||` map to the
 corresponding nodes. Go has no ternary and no `try`/`catch` (errors are returned
 values), so those simply don't occur.
+
+For **PHP** (`cccc-php`): functions / methods / closures / `fn` arrow functions /
+property hooks are the function-like units; `if`/`elseif`/`else`, `while`/
+`do`-`while`/`for`/`foreach`, `switch` and the `match` expression (a `default`
+arm is the non-decision case), `catch` clauses, multi-level `break N`/
+`continue N` and `goto`, the ternary `?:`, and `&&`/`and`/`||`/`or`/`??` map to
+the corresponding nodes. `&&` and `and` (likewise `||` and `or`) are the same
+normalized operator; `??` folds as a coalescing run.
