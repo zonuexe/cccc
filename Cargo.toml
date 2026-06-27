@@ -8,6 +8,8 @@ members = [
     "crates/cccc-rs-cli",
     "crates/cccc-go",
     "crates/cccc-go-cli",
+    "crates/cccc-php",
+    "crates/cccc-php-cli",
 ]
 resolver = "2"
 
@@ -25,6 +27,7 @@ cccc-cli = { path = "crates/cccc-cli", version = "0.3.0" }
 cccc-es = { path = "crates/cccc-es", version = "0.3.0" }
 cccc-rs = { path = "crates/cccc-rs", version = "0.3.0" }
 cccc-go = { path = "crates/cccc-go", version = "0.3.0" }
+cccc-php = { path = "crates/cccc-php", version = "0.3.0" }
 serde = { version = "1", features = ["derive"] }
 
 [profile.release]
