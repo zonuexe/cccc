@@ -281,6 +281,11 @@ impl Builder {
                 }
             }
             StmtKind::Namespace(n) => {
+                // Only the braced form `namespace Foo { … }` nests its members
+                // here. The semicolon form `namespace Foo;` is `Simple` and
+                // carries no body — its declarations are top-level siblings in
+                // `Program.stmts`, already visited by the module-level loop — so
+                // there is nothing to descend into for that variant.
                 if let NamespaceBody::Braced(block) = &n.body {
                     for s in block.stmts.iter() {
                         let _ = self.visit_stmt(s);
@@ -943,6 +948,48 @@ mod tests {
         assert_eq!(find(&analyze(src).functions, "m").unwrap().kind, "method");
         // A closure passed as a constructor argument is still reached.
         assert_eq!(cognitive_of(src, "<arrow>"), 1); // &&
+    }
+
+    #[test]
+    fn namespace_declarations_are_lowered_in_both_forms() {
+        // Semicolon form: `namespace Foo;` is `Simple`, so its declarations are
+        // top-level siblings reached by the module-level loop.
+        let semicolon = r#"<?php
+            namespace Foo;
+            function f($x) {
+                if ($x) {
+                    return 1;
+                }
+                return 0;
+            }
+            class C {
+                public function m($y) {
+                    foreach ($y as $i) {
+                        if ($i) {
+                            return $i;
+                        }
+                    }
+                    return null;
+                }
+            }
+        "#;
+        assert_eq!(cognitive_of(semicolon, "f"), 1); // if
+        assert_eq!(cognitive_of(semicolon, "m"), 3); // foreach + nested if
+        assert_eq!(analyze(semicolon).functions.len(), 2);
+
+        // Braced form: `namespace Foo { … }` nests its members in a block.
+        let braced = r#"<?php
+            namespace Foo {
+                function g($x) {
+                    if ($x) {
+                        return 1;
+                    }
+                    return 0;
+                }
+            }
+        "#;
+        assert_eq!(cognitive_of(braced, "g"), 1);
+        assert_eq!(analyze(braced).functions.len(), 1);
     }
 
     #[test]
