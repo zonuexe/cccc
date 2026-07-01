@@ -28,8 +28,11 @@
 //! - `def` (incl. `def self.m`) → [`Node::Function`] (`"method"`); a block
 //!   (`{ }` / `do…end`) → `"block"`; a `-> { }` lambda → `"lambda"`. Each is its
 //!   own unit (nesting resets), matching how the ES/PHP adapters treat
-//!   arrows/closures. A block borrows the name of the method it is passed to
-//!   (`xs.each { }` → `each`).
+//!   arrows/closures. Blocks and lambdas are anonymous (`<block>` / `<lambda>`),
+//!   like an unassigned ES/PHP callback — deliberately *not* named after the
+//!   method they are passed to, so a DSL block that calls the same method again
+//!   (nested `describe`/`context`, Rails `namespace`, …) is not mistaken for
+//!   recursion.
 //! - `if` / `elsif` / `else` and `unless` → [`Node::Branch`] (chaining `elsif` as
 //!   a nested `Branch` so it scores flat). The ternary `a ? b : c` is a keyword-
 //!   less `IfNode`, lowered to [`Node::Conditional`] so its `else` is not a second
@@ -384,8 +387,7 @@ impl<'pr> Visit<'pr> for Builder {
 
     fn visit_block_node(&mut self, node: &BlockNode<'pr>) {
         // Reached only for blocks not attached to a plain call (e.g. `super`);
-        // call-attached blocks are handled in `visit_call_node` so they can
-        // borrow the method name.
+        // call-attached blocks are handled in `visit_call_node`.
         let line = self.line(node.location().start_offset());
         let body = node.body();
         self.emit_function("<block>".to_string(), "block", line, |b| {
@@ -408,12 +410,10 @@ impl<'pr> Visit<'pr> for Builder {
     fn visit_call_node(&mut self, node: &CallNode<'pr>) {
         let name = constant_name(node.name().as_slice(), "<call>");
         // Safe-navigation (`a&.b`) is still a call for recursion purposes.
-        self.emit(Node::Call {
-            callee: Some(name.clone()),
-        });
+        self.emit(Node::Call { callee: Some(name) });
 
         // Manually walk the children so we can turn a `{ }` / `do…end` block into
-        // its own `Function` unit named after this method (and not double-visit).
+        // its own `Function` unit (and not double-visit it via the default walk).
         if let Some(recv) = node.receiver() {
             self.visit(&recv);
         }
@@ -426,7 +426,12 @@ impl<'pr> Visit<'pr> for Builder {
             if let Some(block) = block.as_block_node() {
                 let line = self.line(block.location().start_offset());
                 let body = block.body();
-                self.emit_function(name, "block", line, |b| {
+                // A block is anonymous (like an ES/PHP callback): name it
+                // `<block>`, not after the method it is passed to. Borrowing the
+                // method name would make a DSL block that contains sibling calls
+                // to the same method (nested `describe`/`context`, Rails
+                // `namespace`, …) look self-recursive and inflate its score.
+                self.emit_function("<block>".to_string(), "block", line, |b| {
                     if let Some(body) = &body {
                         b.visit(body);
                     }
@@ -765,7 +770,7 @@ mod tests {
     }
 
     #[test]
-    fn block_is_its_own_unit_named_after_the_method() {
+    fn block_is_its_own_anonymous_unit() {
         let src = r#"
             def host(xs)
               xs.each do |x|
@@ -778,8 +783,28 @@ mod tests {
         // host owns no structural complexity; the block does.
         assert_eq!(cognitive_of(src, "host"), 0);
         // if(+1) + && run(+1) = 2
-        assert_eq!(cognitive_of(src, "each"), 2);
-        assert_eq!(find(&analyze(src).functions, "each").unwrap().kind, "block");
+        assert_eq!(cognitive_of(src, "<block>"), 2);
+        assert_eq!(
+            find(&analyze(src).functions, "<block>").unwrap().kind,
+            "block"
+        );
+    }
+
+    #[test]
+    fn dsl_block_calling_its_own_method_is_not_recursion() {
+        // A block passed to `describe` that itself calls `describe`/`context`
+        // must not be scored as self-recursion (the block is anonymous, not a
+        // method named `describe`).
+        let src = r#"
+            describe "outer" do
+              describe "a" do
+              end
+              context "b" do
+              end
+            end
+        "#;
+        // The outer block has no branches/loops/logic → cognitive 0.
+        assert_eq!(cognitive_of(src, "<block>"), 0);
     }
 
     #[test]
