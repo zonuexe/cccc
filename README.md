@@ -3,7 +3,7 @@
 - A fast CLI — a **single `cccc` binary** — that measures **Cognitive Complexity**
   (SonarSource / G. Ann Campbell) and **Cyclomatic Complexity** (McCabe). Written
   in Rust. It routes each file to the right front-end by its extension, so one run
-  can analyze a mixed-language tree. Five languages ship today, all sharing the
+  can analyze a mixed-language tree. Various languages ship today, all sharing the
   same engine, flags, and output format:
   - **TypeScript / JavaScript** (`--lang es`), via the [oxc](https://oxc.rs)
     parser. Analyzes `.ts`, `.tsx`, `.js`, `.jsx`, `.mts`, `.cts`, `.mjs`, `.cjs`.
