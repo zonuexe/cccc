@@ -34,24 +34,51 @@ jobs:
           - aarch64-apple-darwin
           - x86_64-pc-windows-msvc
         include:
+          # The two musl targets build the vendored Prism C sources for a
+          # foreign libc, so they cross-compile with cargo-zigbuild (zig provides
+          # the target C toolchain + linker); the rest build natively with cargo.
           - target: x86_64-unknown-linux-musl
             os: ubuntu-latest
+            build-tool: cargo-zigbuild
           - target: aarch64-unknown-linux-musl
             os: ubuntu-latest
+            build-tool: cargo-zigbuild
           - target: x86_64-apple-darwin
             os: macos-latest
+            build-tool: cargo
           - target: aarch64-apple-darwin
             os: macos-latest
+            build-tool: cargo
           - target: x86_64-pc-windows-msvc
             os: windows-latest
+            build-tool: cargo
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      # cccc-rb builds Ruby's Prism from vendored C via bindgen, which needs
+      # libclang on the host that runs the build.
+      - name: Install libclang (bindgen)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libclang-dev
+
+      - name: Set up Zig (cargo-zigbuild cross C toolchain)
+        if: matrix.build-tool == 'cargo-zigbuild'
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
+        with:
+          version: 0.13.0
+
+      - name: Point bindgen at the preinstalled libclang (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: echo "LIBCLANG_PATH=C:\\Program Files\\LLVM\\bin" >> "$GITHUB_ENV"
+
       - uses: taiki-e/upload-rust-binary-action@dd5bbe0528f32a483b749797277ab6ef83a29999
         with:
           # The unified cccc binary.
           bin: ${{ matrix.bin }}
           target: ${{ matrix.target }}
+          build-tool: ${{ matrix.build-tool }}
           # Archive name: cccc-<tag>-<target>.{tar.gz,zip}
           archive: $bin-$tag-$target
           # Bundle docs/license alongside the binary in the archive.
