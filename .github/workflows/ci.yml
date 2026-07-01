@@ -33,6 +33,9 @@ jobs:
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+      # cccc-rb builds Ruby's Prism from vendored C via bindgen, which needs libclang.
+      - name: Install libclang (for the ruby-prism / bindgen build)
+        run: sudo apt-get update && sudo apt-get install -y libclang-dev
       - name: Run tests
         run: cargo test --workspace --all-targets --all-features
 
@@ -45,5 +48,8 @@ jobs:
           toolchain: stable
           components: clippy
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+      # cccc-rb builds Ruby's Prism from vendored C via bindgen, which needs libclang.
+      - name: Install libclang (for the ruby-prism / bindgen build)
+        run: sudo apt-get update && sudo apt-get install -y libclang-dev
       - name: Run clippy
         run: cargo clippy --workspace --all-targets --all-features -- -D warnings

@@ -1,0 +1,100 @@
+name: Cross build
+
+# Builds the unified `cccc` binary for every release target on PRs, so that the
+# cross-compilation of `cccc-rb` (Ruby's Prism, a vendored C library built via
+# bindgen) is validated before a tag is cut. Mirrors the target matrix in
+# release.yml.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: cross-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            tool: zigbuild
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            tool: zigbuild
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            tool: cargo
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            tool: cargo
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            tool: cargo
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          key: ${{ matrix.target }}
+
+      # --- Linux (musl): zig supplies the target C compiler + linker for the
+      # vendored Prism sources; host libclang drives bindgen. ---
+      - name: Install libclang (bindgen)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libclang-dev
+
+      - name: Set up Zig
+        if: matrix.tool == 'zigbuild'
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
+        with:
+          version: 0.13.0
+
+      - name: Install cargo-zigbuild
+        if: matrix.tool == 'zigbuild'
+        uses: taiki-e/install-action@16b05812d776ae1dfaabc8277e421fb6d2506419 # v2.82.7
+        with:
+          tool: cargo-zigbuild
+
+      # --- Windows: MSVC (cl.exe) compiles the vendored Prism sources; the
+      # runner ships LLVM, so point bindgen at its libclang. ---
+      - name: Point bindgen at the preinstalled libclang (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: echo "LIBCLANG_PATH=C:\\Program Files\\LLVM\\bin" >> "$GITHUB_ENV"
+
+      - name: Build (zigbuild)
+        if: matrix.tool == 'zigbuild'
+        run: cargo zigbuild --release --target ${{ matrix.target }} --bin cccc
+
+      - name: Build (cargo)
+        if: matrix.tool == 'cargo'
+        run: cargo build --release --target ${{ matrix.target }} --bin cccc
+
+      # Smoke-check the produced binary where it can run natively (host == target):
+      # x86_64 Linux/Windows runners and the arm64 macOS runner.
+      - name: Smoke-test the native binary (Unix)
+        if: matrix.target == 'x86_64-unknown-linux-musl' || matrix.target == 'aarch64-apple-darwin'
+        shell: bash
+        run: |
+          bin="target/${{ matrix.target }}/release/cccc"
+          "$bin" --lang ruby --table crates/cccc-cli/tests/fixtures/sample.rb
+
+      - name: Smoke-test the native binary (Windows)
+        if: matrix.target == 'x86_64-pc-windows-msvc'
+        run: |
+          & "target/${{ matrix.target }}/release/cccc.exe" --lang ruby --table crates/cccc-cli/tests/fixtures/sample.rb
