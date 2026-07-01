@@ -183,15 +183,13 @@ regardless of the worker count.
 
 ## GitHub Action
 
-A composite action to install and run cccc against ECMAScript/TypeScript in CI
-lives in its own repository:
-[moznion/cccc-es-action](https://github.com/moznion/cccc-es-action).
+A composite action to install and run `cccc`  in CI lives in its own repository:
+[moznion/cccc-action](https://github.com/moznion/cccc-action).
 
 ```yaml
-- uses: moznion/cccc-es-action@v1
+- uses: moznion/cccc-action@v1
   with:
-    path: src/
-    max-cognitive: 15
+    path: src/           # analyze this; thresholds come from cccc.toml
 ```
 
 ## Output shape (JSON)
